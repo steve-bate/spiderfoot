@@ -10,7 +10,7 @@
 # Copyright:   (c) Steve Micallef 2012
 # Licence:     GPL
 # -------------------------------------------------------------------------------
-
+import importlib
 import sys
 
 if sys.version_info < (3, 6):
@@ -58,7 +58,8 @@ sfConfig = {
     '_socks5pwd': '',
     '_socks6dns': True,
     '_torctlport': 9051,
-    '__logstdout': False
+    '__logstdout': False,
+    '_additionalModuleLocation': ''
 }
 
 sfOptdescs = {
@@ -76,6 +77,7 @@ sfOptdescs = {
     '_socks6dns': "Resolve DNS through the SOCKS proxy? When SOCKS/TOR is used this will always be True when resolving to fetch web content. Otherwise, all other DNS resolution goes to your configured DNS server.",
     '_torctlport': "The port TOR is taking control commands on. This is necessary for SpiderFoot to tell TOR to re-circuit when it suspects anonymity is compromised.",
     '_fatalerrors': "Abort the scan when modules encounter exceptions.",
+    '_additionalModuleLocation': f'Additional module directory',
     '_modulesenabled': "Modules enabled for the scan."  # This is a hack to get a description for an option not actually available.
 }
 
@@ -87,6 +89,32 @@ def handle_abort(signal, frame):
     if scanId and dbh:
         dbh.scanInstanceSet(scanId, None, None, "ABORTED")
     sys.exit(-1)
+
+
+def loadModules(baseDir, moduleNamespace, sfModules):
+    # Go through each module in the modules directory tree with a .py extension
+    for filename in os.listdir(os.path.join(baseDir, moduleNamespace.replace('.', os.path.sep))):
+        if filename.startswith("sfp_") and filename.endswith(".py"):
+            # Skip the module template and debugging modules
+            if filename == "sfp_template.py" or filename == 'sfp_stor_print.py':
+                continue
+            sfModuleName = filename.split('.')[0]
+            sfModule = {}
+            sfModules[sfModuleName] = sfModule
+            pyModule = __import__(f'{moduleNamespace}.{sfModuleName}', globals(), locals(), [sfModuleName])
+            sfModule['object'] = sfModuleClass = getattr(pyModule, sfModuleName)()
+            sfModule['name'] = sfModuleClass.__doc__.split(":", 5)[0]
+            sfModule['cats'] = sfModuleClass.__doc__.split(":", 5)[1].split(",")
+            sfModule['group'] = sfModuleClass.__doc__.split(":", 5)[2]
+            sfModule['labels'] = sfModuleClass.__doc__.split(":", 5)[3].split(",")
+            sfModule['descr'] = sfModuleClass.__doc__.split(":", 5)[4]
+            sfModule['provides'] = sfModuleClass.producedEvents()
+            sfModule['consumes'] = sfModuleClass.watchedEvents()
+            if hasattr(sfModuleClass, 'opts'):
+                sfModule['opts'] = sfModuleClass.opts
+            if hasattr(sfModuleClass, 'optdescs'):
+                sfModule['optdescs'] = sfModuleClass.optdescs
+
 
 if __name__ == '__main__':
     if len(sys.argv) == 0:
@@ -139,38 +167,21 @@ if __name__ == '__main__':
     else:
         sfConfig['__logstdout'] = True
 
-    sfModules = dict()
+    sfModulesOut = dict()
     sft = SpiderFoot(sfConfig)
-    # Go through each module in the modules directory with a .py extension
-    for filename in os.listdir(sft.myPath() + '/modules/'):
-        if filename.startswith("sfp_") and filename.endswith(".py"):
-            # Skip the module template and debugging modules
-            if filename == "sfp_template.py" or filename == 'sfp_stor_print.py':
-                continue
-            modName = filename.split('.')[0]
 
-            # Load and instantiate the module
-            sfModules[modName] = dict()
-            mod = __import__('modules.' + modName, globals(), locals(), [modName])
-            sfModules[modName]['object'] = getattr(mod, modName)()
-            sfModules[modName]['name'] = sfModules[modName]['object'].__doc__.split(":", 5)[0]
-            sfModules[modName]['cats'] = sfModules[modName]['object'].__doc__.split(":", 5)[1].split(",")
-            sfModules[modName]['group'] = sfModules[modName]['object'].__doc__.split(":", 5)[2]
-            sfModules[modName]['labels'] = sfModules[modName]['object'].__doc__.split(":", 5)[3].split(",")
-            sfModules[modName]['descr'] = sfModules[modName]['object'].__doc__.split(":", 5)[4]
-            sfModules[modName]['provides'] = sfModules[modName]['object'].producedEvents()
-            sfModules[modName]['consumes'] = sfModules[modName]['object'].watchedEvents()
-            if hasattr(sfModules[modName]['object'], 'opts'):
-                sfModules[modName]['opts'] = sfModules[modName]['object'].opts
-            if hasattr(sfModules[modName]['object'], 'optdescs'):
-                sfModules[modName]['optdescs'] = sfModules[modName]['object'].optdescs
+    loadModules(SpiderFoot.myPath(), 'modules', sfModulesOut)
 
-    if len(list(sfModules.keys())) < 1:
+    if SpiderFoot.dataPath() != SpiderFoot.myPath():
+        sys.path.append(SpiderFoot.dataPath())
+        loadModules(SpiderFoot.dataPath(), 'local.modules', sfModulesOut)
+
+    if len(list(sfModulesOut.keys())) < 1:
         print("No modules found in the modules directory.")
         sys.exit(-1)
 
     # Add module info to sfConfig so it can be used by the UI
-    sfConfig['__modules__'] = sfModules
+    sfConfig['__modules__'] = sfModulesOut
     # Add descriptions of the global config options
     sfConfig['__globaloptdescs__'] = sfOptdescs
 
@@ -180,10 +191,10 @@ if __name__ == '__main__':
     if not args.l:
         if args.modules:
             print("Modules available:")
-            for m in sorted(sfModules.keys()):
+            for m in sorted(sfModulesOut.keys()):
                 if "__" in m:
                     continue
-                print(('{0:25}  {1}'.format(m, sfModules[m]['descr'])))
+                print(('{0:25}  {1}'.format(m, sfModulesOut[m]['descr'])))
             sys.exit(0)
 
         if args.types:
@@ -234,7 +245,7 @@ if __name__ == '__main__':
         modlist = list()
         if not args.t and not args.m:
             print("WARNING: You didn't specify any modules or types, so all will be enabled.")
-            for m in list(sfModules.keys()):
+            for m in list(sfModulesOut.keys()):
                 if "__" in m:
                     continue
                 modlist.append(m)
@@ -303,9 +314,9 @@ if __name__ == '__main__':
             rtypes = args.t.split(",")
             for mod in tmodlist:
                 for r in rtypes:
-                    if not sfModules[mod]['provides']:
+                    if not sfModulesOut[mod]['provides']:
                         continue
-                    if r in sfModules[mod].get('provides', []) and mod not in modlist:
+                    if r in sfModulesOut[mod].get('provides', []) and mod not in modlist:
                         modlist.append(mod)
 
         if len(modlist) == 0:

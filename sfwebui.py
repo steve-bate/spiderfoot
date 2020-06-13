@@ -374,9 +374,7 @@ class SpiderFootWebUi:
             print("[info] Waiting for the scan to initialize...")
             time.sleep(1)
 
-        templ = Template(filename='dyn/scaninfo.tmpl', lookup=self.lookup)
-        return templ.render(id=newId, name=str(scanname), docroot=self.docroot,
-            status=dbh.scanInstanceGet(newId), pageid="SCANLIST")
+        raise cherrypy.HTTPRedirect(f"/scaninfo?id={newId}")
 
     rerunscan.exposed = True
 
@@ -419,8 +417,7 @@ class SpiderFootWebUi:
                 print("[info] Waiting for the scan to initialize...")
                 time.sleep(1)
 
-        templ = Template(filename='dyn/scanlist.tmpl', lookup=self.lookup)
-        return templ.render(rerunscans=True, docroot=self.docroot, pageid="SCANLIST")
+        raise cherrypy.HTTPRedirect("/")
 
     rerunscanmulti.exposed = True
 
@@ -429,6 +426,7 @@ class SpiderFootWebUi:
     def newscan(self):
         dbh = SpiderFootDb(self.config)
         types = dbh.eventTypes()
+
         templ = Template(filename='dyn/newscan.tmpl', lookup=self.lookup)
         return templ.render(pageid='NEWSCAN', types=types, docroot=self.docroot,
                             modules=self.config['__modules__'], scanname="",

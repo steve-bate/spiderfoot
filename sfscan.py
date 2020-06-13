@@ -187,10 +187,15 @@ class SpiderFootScanner():
                 if modName == '':
                     continue
 
-                try:
-                    module = __import__('modules.' + modName, globals(), locals(),
-                                        [modName])
-                except ImportError:
+                module = None
+                for moduleNamespace in ['modules', 'local.modules']:
+                    try:
+                        module = __import__(f'{moduleNamespace}.{modName}', globals(), locals(), [modName])
+                        break
+                    except ModuleNotFoundError:
+                        continue
+
+                if module is None:
                     self.sf.error("Failed to load module: " + modName, False)
                     continue
 
