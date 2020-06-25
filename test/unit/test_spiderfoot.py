@@ -1,5 +1,6 @@
 # test_spiderfoot.py
 from sflib import SpiderFoot, SpiderFootTarget
+import sys
 import unittest
 
 class TestSpiderFoot(unittest.TestCase):
@@ -773,6 +774,7 @@ class TestSpiderFoot(unittest.TestCase):
         self.assertFalse(addrs)
         self.assertIsInstance(addrs, list)
 
+    @unittest.skipIf(sys.platform.startswith('win'), "Windows issues")
     def test_resolve_host6_should_return_a_list(self):
         """
         Test resolveHost6(self, hostname)

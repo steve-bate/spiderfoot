@@ -2701,7 +2701,7 @@ class SpiderFootEvent(object):
             self.sourceEventHash = "ROOT"
             return
 
-        if type(sourceEvent) != SpiderFootEvent:
+        if type(sourceEvent).__name__ != 'SpiderFootEvent':
             print("FATAL: Invalid source event: %s" % sourceEvent)
             print("FATAL: Offending module: %s" % module)
             print("FATAL: Offending type: %s" % eventType)
