@@ -2746,3 +2746,5 @@ class SpiderFootEvent(object):
     def setSourceEventHash(self, srcHash):
         self.sourceEventHash = srcHash
 
+    def __str__(self):
+        return f"<{type(self).__name__} {self.eventType} {self.data}>"
