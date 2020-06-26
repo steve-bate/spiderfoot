@@ -1,0 +1,36 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Login to DockerHub Registry
+      run: echo ${{ secrets.DOCKERHUB_PASSWORD }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Set variables
+      id: vars
+      shell: bash
+      run: |
+        repo=stephenbate/spiderfoot
+        echo ::set-output name=repo::$repo
+        echo ::set-output name=tag::$repo:$(date +%Y%m%dT%H%M%S).${GITHUB_SHA:0:7}
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag ${{ steps.vars.outputs.tag }}
+    - name: Push Docker image (current)
+      run: |
+        docker push ${{ steps.vars.outputs.tag }}
+        docker tag ${{ steps.vars.outputs.tag }} ${{ steps.vars.outputs.repo }}:latest
+        docker push ${{ steps.vars.outputs.repo }}:latest
+
+
+
