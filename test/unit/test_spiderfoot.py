@@ -19,8 +19,9 @@ class TestSpiderFoot(unittest.TestCase):
       '_fetchtimeout': 5,  # number of seconds before giving up on a fetch
       '_internettlds': 'https://publicsuffix.org/list/effective_tld_names.dat',
       '_internettlds_cache': 72,
+      '_genericusers': "abuse,admin,billing,compliance,devnull,dns,ftp,hostmaster,inoc,ispfeedback,ispsupport,list-request,list,maildaemon,marketing,noc,no-reply,noreply,null,peering,peering-notify,peering-request,phish,phishing,postmaster,privacy,registrar,registry,root,routing-registry,rr,sales,security,spam,support,sysadmin,tech,undisclosed-recipients,unsubscribe,usenet,uucp,webmaster,www",
       '__version__': '3.0',
-      '__database': 'spiderfoot.db',
+      '__database': 'spiderfoot.test.db',  # note: test database file
       '__webaddr': '127.0.0.1',
       '__webport': 5001,
       '__docroot': '',  # don't put trailing /
@@ -150,11 +151,11 @@ class TestSpiderFoot(unittest.TestCase):
 
     def test_gen_scan_instance_guid_should_return_a_string(self):
         """
-        Test genScanInstanceGUID(self, scanName)
+        Test genScanInstanceGUID(self)
         """
         sf = SpiderFoot(dict())
 
-        scan_instance_id = sf.genScanInstanceGUID(None)
+        scan_instance_id = sf.genScanInstanceGUID()
         self.assertIsInstance(scan_instance_id, str)
 
     def test_dblog_invalid_dbh_should_raise(self):
@@ -267,27 +268,49 @@ class TestSpiderFoot(unittest.TestCase):
         self.assertIsInstance(cache_get, str)
         self.assertEqual(data, cache_get)
 
-    @unittest.skip("todo")
+    def test_config_serialize_invalid_opts_should_raise(self):
+        """
+        Test configSerialize(self, opts, filterSystem=True)
+        """
+        sf = SpiderFoot(dict())
+
+        with self.assertRaises(TypeError) as cm:
+            config = sf.configSerialize(None, None)
+
     def test_config_serialize_should_return_a_dict(self):
         """
         Test configSerialize(self, opts, filterSystem=True)
         """
         sf = SpiderFoot(dict())
 
-        config = sf.configSerialize(None, None)
-        self.assertIsInstance(config, dict)
-
         config = sf.configSerialize(dict(), None)
         self.assertIsInstance(config, dict)
 
-    @unittest.skip("todo")
+    def test_config_unserialize_invalid_opts_should_raise(self):
+        """
+        Test configUnserialize(self, opts, referencePoint, filterSystem=True)
+        """
+        sf = SpiderFoot(dict())
+
+        with self.assertRaises(TypeError) as cm:
+            config = sf.configUnserialize(None, dict(), None)
+
+    def test_config_unserialize_invalid_reference_point_should_raise(self):
+        """
+        Test configUnserialize(self, opts, referencePoint, filterSystem=True)
+        """
+        sf = SpiderFoot(dict())
+
+        with self.assertRaises(TypeError) as cm:
+            config = sf.configUnserialize(dict(), None, None)
+
     def test_config_unserialize_should_return_a_dict(self):
         """
         Test configUnserialize(self, opts, referencePoint, filterSystem=True)
         """
         sf = SpiderFoot(dict())
 
-        config = sf.configUnserialize(None, None, None)
+        config = sf.configUnserialize(dict(), dict(), True)
         self.assertIsInstance(config, dict)
 
     def test_cache_get_invalid_label_should_return_none(self):
@@ -1104,6 +1127,7 @@ class TestSpiderFoot(unittest.TestCase):
         check_dns_wildcard = sf.checkDnsWildcard(None)
         self.assertIsInstance(check_dns_wildcard, bool)
 
+    @unittest.skipIf(sys.platform.startswith("win"), "Not reliable on Windows")
     def test_check_dns_wildcard_should_return_a_boolean(self):
         """
         Test checkDnsWildcard(self, target)
