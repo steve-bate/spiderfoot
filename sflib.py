@@ -668,11 +668,13 @@ class SpiderFoot:
             if type(opts[opt]) is list:
                 storeopts[opt] = ','.join(opts[opt])
 
-        # todo: ensure the __modules__ key value is in the expected format
         if '__modules__' not in opts:
             return storeopts
 
-        for mod in (opts['__modules__'] or []):
+        if not isinstance(opts['__modules__'], dict):
+            raise TypeError("opts['__modules__'] is %s; expected dict()" % type(opts['__modules__']))
+
+        for mod in opts['__modules__']:
             for opt in opts['__modules__'][mod]['opts']:
                 if opt.startswith('_') and filterSystem:
                     continue
@@ -742,6 +744,9 @@ class SpiderFoot:
 
         if '__modules__' not in referencePoint:
             return returnOpts
+
+        if not isinstance(referencePoint['__modules__'], dict):
+            raise TypeError("referencePoint['__modules__'] is %s; expected dict()" % type(referencePoint['__modules__']))
 
         # Module options
         # A lot of mess to handle typing..
@@ -1590,6 +1595,10 @@ class SpiderFoot:
         """
 
         ret = list()
+
+        if not isinstance(data, str):
+            return ret
+
         hashes = {
             "MD5": re.compile(r"(?:[^a-fA-F\d]|\b)([a-fA-F\d]{32})(?:[^a-fA-F\d]|\b)"),
             "SHA1": re.compile(r"(?:[^a-fA-F\d]|\b)([a-fA-F\d]{40})(?:[^a-fA-F\d]|\b)"),
@@ -1627,17 +1636,26 @@ class SpiderFoot:
 
         return list(emails)
     
-    # Find all credit card numbers with the supplied content
-    #
-    # Extracts numbers with lengths ranging from 13 - 19 digits
-    #
-    # Checks the numbers using Luhn's algorithm to verify if
-    # the number is a valid credit card number or not
-    #
-    # Returns a list
-    def parseCreditCards(self,data):
+    def parseCreditCards(self, data):
+        """Find all credit card numbers with the supplied content.
+
+        Extracts numbers with lengths ranging from 13 - 19 digits
+
+        Checks the numbers using Luhn's algorithm to verify
+        if the number is a valid credit card number or not
+
+        Args:
+            data (str): text to search for credit card numbers
+
+        Returns:
+            list: list of credit card numbers
+        """
+
+        if not isinstance(data, str):
+            return list()
+
         creditCards = set() 
-        
+
         # Remove whitespace from data. 
         # Credit cards might contain spaces between them 
         # which will cause regex mismatch
@@ -1673,16 +1691,25 @@ class SpiderFoot:
                 self.debug("Skipped invalid credit card number: " + match)
         return list(creditCards)
         
-    # Find all IBAN numbers with the supplied content
-    #
-    # Extracts possible IBAN Numbers using a generic regex 
-    #
-    # Checks whether the possible IBAN number is valid or not
-    # Using country-wise length check and Mod 97 algorithm
-    #
-    # Returns a list
     def parseIBANNumbers(self, data):
-        ibanNumbers = set()
+        """Find all International Bank Account Numbers (IBANs) within the supplied content.
+
+        Extracts possible IBANs using a generic regex.
+
+        Checks whether possible IBANs are valid or not
+        using country-wise length check and Mod 97 algorithm.
+
+        Args:
+            data (str): text to search for IBANs
+
+        Returns:
+            list: list of IBAN
+        """
+
+        if not isinstance(data, str):
+            return list()
+
+        ibans = set()
 
         # Dictionary of country codes and their respective IBAN lengths
         ibanCountryLengths = {
@@ -1694,7 +1721,7 @@ class SpiderFoot:
             "FI" : 18, "FR" : 27, "GE" : 22, "DE" : 22,
             "GI" : 23, "GR" : 27, "GL" : 18, "GT" : 28,
             "VA" : 22, "HU" : 28, "IS" : 26, "IQ" : 23,
-            "IE" : 22, "IL" : 27, "JO" : 30, "KZ" : 20,
+            "IE" : 22, "IL" : 23, "JO" : 30, "KZ" : 20,
             "XK" : 20, "KW" : 30, "LV" : 21, "LB" : 28,
             "LI" : 21, "LT" : 20, "LU" : 20, "MT" : 31,
             "MR" : 27, "MU" : 30, "MD" : 24, "MC" : 27,
@@ -1712,52 +1739,46 @@ class SpiderFoot:
             "AE" : 23, "GB" : 22, "SE" : 24
         }
 
-        # Remove whitespace from data. 
-        # IBAN Numbers might contain spaces between them 
-        # which will cause regex mismatch
+        # Normalize input data to remove whitespace
         data = data.replace(" ", "")
 
-        # Extract alphanumeric characters of lengths ranging from 16 to 31
-        possibleIBANRegex = "[A-Za-z0-9]{16,31}"
-        matches = re.findall(possibleIBANRegex, data)
+        # Extract alphanumeric characters of lengths ranging from 15 to 32
+        # and starting with two characters
+        matches = re.findall("[A-Za-z]{2}[A-Za-z0-9]{13,30}", data)
 
         for match in matches:  
-            match = match.upper()
-            ibanNumber = match
+            iban = match.upper()
 
-            countryCode = ibanNumber[0:2]
+            countryCode = iban[0:2]
 
             if countryCode not in ibanCountryLengths.keys():
-                # Invalid IBAN Number due to country code not existing in dictionary
-                self.debug("Skipped invalid IBAN number: " + ibanNumber)
+                # Invalid IBAN due to country code not existing in dictionary
+                self.debug("Skipped invalid IBAN: %s" % iban)
                 continue
             
-            # Using Mod 97 algorithm to verify if IBAN Number is valid
-            if len(ibanNumber) == ibanCountryLengths[countryCode]:
-                # Move the first 4 characters to the end of the string 
-                match = match[4:] + match[0:4]  
-                
-                for character in match: 
-                    # Check if character is a letter
-                    if character.isalpha():
-                        # Replace letters to number  
-                        # where A = 10, B = 11, ...., Z = 35
-                        match = match.replace(character, str((ord(character) - 65) + 10))                     
-
-                if int(match) % 97 == 1:
-                    # IBAN Number is valid 
-                    self.debug("Found IBAN number: " + match)
-                    ibanNumbers.add(ibanNumber)
-                else:
-                    # Invalid IBAN Number due to failed Mod 97 operation
-                    self.debug("Skipped invalid IBAN number: " + ibanNumber)
-                    continue                    
-            else:
-                # Invalid IBAN Number due to length mismatch
-                self.debug("Skipped invalid IBAN number: " + ibanNumber)
+            if len(iban) != ibanCountryLengths[countryCode]:
+                # Invalid IBAN due to length mismatch
+                self.debug("Skipped invalid IBAN: %s" % iban)
                 continue
 
-        return list(ibanNumbers)
+            # Convert IBAN to integer format.
+            # Move the first 4 characters to the end of the string,
+            # then convert all characters to integers; where A = 10, B = 11, ...., Z = 35
+            iban_int = iban[4:] + iban[0:4]
+            for character in iban_int:
+                if character.isalpha():
+                    iban_int = iban_int.replace(character, str((ord(character) - 65) + 10))
+
+            # Check IBAN integer mod 97 for remainder
+            if int(iban_int) % 97 != 1:
+                # Invalid IBAN due to failed Mod 97 operation
+                self.debug("Skipped invalid IBAN: %s" % iban)
+                continue
+
+            self.debug("Found IBAN: %s" % iban)
+            ibans.add(iban)
+
+        return list(ibans)
 
     def sslDerToPem(self, der_cert):
         """Given a certificate as a DER-encoded blob of bytes, returns a PEM-encoded string version of the same certificate.
