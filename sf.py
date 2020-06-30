@@ -88,6 +88,7 @@ scanId = None
 dbh = None
 
 def handle_abort(signal, frame):
+    """handle interrupt and abort scan."""
     print("[*] Aborting...")
     if scanId and dbh:
         dbh.scanInstanceSet(scanId, None, None, "ABORTED")
@@ -243,6 +244,11 @@ if __name__ == '__main__':
         if "." not in target and not target.startswith("+") and "\"" not in target:
             target = "\"" + target + "\""
         targetType = sf.targetType(target)
+
+        if not targetType:
+            print("[-] Could not determine target type. Invalid target: %s" % target)
+            sys.exit(-1)
+
         target = target.strip('"')
 
         modlist = list()
@@ -275,7 +281,7 @@ if __name__ == '__main__':
 
         # Easier if scanning by module
         if args.m:
-            modlist = args.m.split(",")
+            modlist = list(filter(None, args.m.split(",")))
 
         # Add sfp__stor_stdout to the module list
         outputformat = "tab"
@@ -330,7 +336,7 @@ if __name__ == '__main__':
 
         # Run the scan
         if sfConfig['__logging']:
-            print(("[*] Modules enabled (" + str(len(modlist)) + "): " + ",".join(modlist)))
+            print("[*] Modules enabled (%s): %s" % (len(modlist), ",".join(modlist)))
         cfg = sf.configUnserialize(dbh.configGet(), sfConfig)
 
         # Debug mode is a variable that gets stored to the DB, so re-apply it
