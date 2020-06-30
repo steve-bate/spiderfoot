@@ -1,4 +1,6 @@
 # test_spiderfootcli.py
+import sys
+
 from sfcli import SpiderFootCli
 import unittest
 import subprocess
@@ -8,23 +10,26 @@ class TestSpiderFootCli(unittest.TestCase):
     Test TestSpiderFootCli
     """
 
-    def execute(self, command):
-        proc = subprocess.Popen(
+    def execute(self, command, input=None):
+        with  subprocess.Popen(
            command,
+           stdin = subprocess.PIPE,
            stdout = subprocess.PIPE,
            stderr = subprocess.PIPE,
-        )
-        out,err = proc.communicate()
-        return out, err, proc.returncode
+        ) as proc:
+            if isinstance(input, str):
+                input = bytes(input, encoding='utf8')
+            out,err = proc.communicate(input, timeout=5000)
+            return out, err, proc.returncode
 
     def test_help_arg_should_print_help(self):
-        out, err, code = self.execute(["python3", "sfcli.py", "-h"])
+        out, err, code = self.execute([sys.executable, "sfcli.py", "-h"])
         self.assertIn(b"show this help message and exit", out)
         self.assertEqual(b"", err)
         self.assertEqual(0, code)
 
     def test_no_args(self):
-        out, err, code = self.execute(["python3", "sfcli.py"])
+        out, err, code = self.execute([sys.executable, "sfcli.py"], "exit\n")
         self.assertEqual(b"", err)
         self.assertEqual(0, code)
 

@@ -24,3 +24,4 @@ networkx==2.3
 cryptography>=2.5
 publicsuffixlist>=0.7.3
 securitytxt>=0.0.2
+pyreadline>=2.1; platform_system != "Windows"
