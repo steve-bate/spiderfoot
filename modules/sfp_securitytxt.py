@@ -96,7 +96,7 @@ class sfp_securitytxt(SpiderFootPlugin):
                 raise
 
     def _notifyLinkedUrl(self, incomingEvent, url):
-        targetValue = self.getTarget().getValue()
+        targetValue = self.getTarget().targetValue
         if targetValue in url.hostname or url.hostname in targetValue:
             outgoingEventType = "LINKED_URL_INTERNAL"
         else:
