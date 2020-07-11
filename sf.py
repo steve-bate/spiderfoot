@@ -97,7 +97,10 @@ def handle_abort(signal, frame):
 
 def loadModules(baseDir, moduleNamespace, sfModules):
     # Go through each module in the modules directory tree with a .py extension
-    for filename in os.listdir(os.path.join(baseDir, moduleNamespace.replace('.', os.path.sep))):
+    moduleDir = os.path.join(baseDir, moduleNamespace.replace('.', os.path.sep))
+    if not os.path.exists(moduleDir):
+        return
+    for filename in os.listdir(moduleDir):
         if filename.startswith("sfp_") and filename.endswith(".py"):
             # Skip the module template and debugging modules
             if filename == "sfp_template.py" or filename == 'sfp_stor_print.py':
@@ -178,6 +181,8 @@ if __name__ == '__main__':
 
     if SpiderFoot.dataPath() != SpiderFoot.myPath():
         sys.path.append(SpiderFoot.dataPath())
+        if not os.path.exists(SpiderFoot.dataPath()):
+            os.makedirs(SpiderFoot.dataPath())
         loadModules(SpiderFoot.dataPath(), 'local.modules', sfModulesOut)
 
     if len(list(sfModulesOut.keys())) < 1:
