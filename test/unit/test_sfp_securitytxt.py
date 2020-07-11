@@ -83,6 +83,7 @@ class TestSecurityTxtModule(unittest.TestCase):
         }
         module = self.setUpModule(sfp_securitytxt, targetType, targetValue, userOpts)
         self.assertEqual(module.opts['test'], userOpts['test'])
+        module.opts.clear()
 
     def test_repeated_event(self):
         targetType = 'INTERNET_NAME'

@@ -23,6 +23,10 @@ class sfp_securitytxt(SpiderFootPlugin):
     DEFAULT_OPTIONS = {
     }
 
+    opts = {
+
+    }
+
     optdescs = {
     }
 
@@ -42,7 +46,8 @@ class sfp_securitytxt(SpiderFootPlugin):
         self.results = self.tempStorage()
 
         # Compensate for spiderfoot class variables :-(
-        self.opts = dict(self.DEFAULT_OPTIONS)
+        self.opts.clear()
+        self.opts.update(self.DEFAULT_OPTIONS)
         if userOpts is not None:
             self.opts.update(userOpts)
 
