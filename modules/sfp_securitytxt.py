@@ -20,7 +20,7 @@ from securitytxt import SecurityTxt
 class sfp_securitytxt(SpiderFootPlugin):
     """security.txt:Footprint:Crawling and Scanning::Retrieves and parses /.well-known/security.txt files"""
 
-    opts = {
+    DEFAULT_OPTIONS = {
     }
 
     optdescs = {
@@ -41,9 +41,10 @@ class sfp_securitytxt(SpiderFootPlugin):
         # Note that a new instance is created each time the function is called.
         self.results = self.tempStorage()
 
+        # Compensate for spiderfoot class variables :-(
+        self.opts = dict(self.DEFAULT_OPTIONS)
         if userOpts is not None:
-            for opt in list(userOpts.keys()):
-                self.opts[opt] = userOpts[opt]
+            self.opts.update(userOpts)
 
     # What events is this module interested in for input
     # For a list of all events, check sfdb.py.
