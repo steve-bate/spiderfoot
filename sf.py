@@ -354,6 +354,9 @@ if __name__ == '__main__':
         if args.x and args.t:
             cfg['__outputfilter'] = args.t.split(",")
 
+        if args.o == "json":
+            print("[", end='')
+
         # Start running a new scan
         scanName = target
         scanId = sf.genScanInstanceGUID()
@@ -386,9 +389,6 @@ if __name__ == '__main__':
                     print('{0}{1}{2}{3}{4}{5}{6}'.format("Source", delim, "Type", delim, "Source Data", delim, "Data"))
                 else:
                     print('{0:30}{1}{2:45}{3}{4}{5}{6}'.format("Source", delim, "Type", delim, "Source Data", delim, "Data"))
-
-        if args.o == "json":
-            print("[", end='')
 
         while True:
             info = dbh.scanInstanceGet(scanId)
